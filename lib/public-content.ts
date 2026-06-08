@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase-server";
+import { createAdminClient, createClient } from "@/lib/supabase-server";
 import { blogPosts as fallbackBlogs, demos as fallbackDemos, faqs as fallbackFaqs, gallery as fallbackGallery, testimonials as fallbackTestimonials } from "@/lib/data";
 import { siteConfig } from "@/lib/constants";
 import type { BlogPost, DemoWebsite, Faq, GalleryItem, Testimonial } from "@/types/content";
@@ -99,12 +99,12 @@ export async function getPublicContent(): Promise<PublicContent> {
     ],
   };
 
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY && !process.env.SUPABASE_SERVICE_ROLE_KEY)) {
     return fallback;
   }
 
   try {
-    const supabase = await createClient();
+    const supabase = createAdminClient() ?? await createClient();
     const [
       settingsResponse,
       demosResponse,
