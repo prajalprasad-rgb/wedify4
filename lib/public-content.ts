@@ -60,6 +60,22 @@ function mediaUrl(media: MediaJoin) {
   return media?.public_url ?? null;
 }
 
+function proxiedMediaUrl(url: string | null | undefined) {
+  if (!url) return url ?? null;
+  if (url.includes("/storage/v1/object/public/")) {
+    return `/api/media?url=${encodeURIComponent(url)}`;
+  }
+  return url;
+}
+
+function imageUrlOrFallback(url: string | null | undefined, fallbackUrl: string) {
+  if (!url) return fallbackUrl;
+  if (url.includes("/storage/v1/object/public/")) return proxiedMediaUrl(url) ?? fallbackUrl;
+  if (/\.(avif|gif|jpe?g|png|webp)(\?|$)/i.test(url)) return url;
+  if (url.includes("images.unsplash.com")) return url;
+  return fallbackUrl;
+}
+
 export async function getPublicContent(): Promise<PublicContent> {
   const fallback: PublicContent = {
     settings: {
@@ -116,16 +132,20 @@ export async function getPublicContent(): Promise<PublicContent> {
       id: item.id,
       title: item.title,
       type: item.item_type,
-      src: mediaUrl(item.media_assets) ?? fallback.gallery[0]?.src ?? siteConfig.heroVideo,
+      src: proxiedMediaUrl(mediaUrl(item.media_assets)) ?? fallback.gallery[0]?.src ?? siteConfig.heroVideo,
       category: item.category ?? "Gallery",
     }));
+    const firstGalleryImage =
+      liveGallery.find((item) => item.type === "image")?.src ??
+      fallback.gallery.find((item) => item.type === "image")?.src;
 
     const liveReels = ((reelsResponse.data ?? []) as unknown as ReelRow[]).map((item) => ({
       id: item.id,
       title: item.title,
       type: "video" as const,
-      src: mediaUrl(item.media_assets) ?? fallback.reels[0]?.src ?? siteConfig.heroVideo,
+      src: proxiedMediaUrl(mediaUrl(item.media_assets)) ?? fallback.reels[0]?.src ?? siteConfig.heroVideo,
       category: item.caption ?? "Wedding Reel",
+      poster: firstGalleryImage,
     }));
 
     const liveBlogs = ((blogsResponse.data ?? []) as BlogRow[]).map((blog) => ({
@@ -134,20 +154,30 @@ export async function getPublicContent(): Promise<PublicContent> {
       excerpt: blog.excerpt ?? "",
       category: "Wedify Blog",
       date: blog.published_at ?? blog.created_at,
-      image: blog.featured_image_url ?? fallback.blogs[0]?.image ?? siteConfig.heroVideo,
+      image: proxiedMediaUrl(blog.featured_image_url) ?? fallback.blogs[0]?.image ?? siteConfig.heroVideo,
       tags: blog.tags ?? [],
       published: blog.status === "published",
       body: typeof blog.content?.body === "string" ? blog.content.body : "",
     }));
 
     return {
-      settings: settingsResponse.data ?? fallback.settings,
+      settings: settingsResponse.data
+        ? {
+            ...settingsResponse.data,
+            hero_video_url: proxiedMediaUrl(settingsResponse.data.hero_video_url),
+            background_music_url: proxiedMediaUrl(settingsResponse.data.background_music_url),
+            seo: {
+              ...(settingsResponse.data.seo ?? {}),
+              hero_image_url: proxiedMediaUrl(settingsResponse.data.seo?.hero_image_url),
+            },
+          }
+        : fallback.settings,
       demos: (demosResponse.data ?? []).map((demo) => ({
         id: demo.id,
         title: demo.title,
         category: "Demo Website",
         description: demo.description ?? "",
-        coverImage: demo.cover_image_url ?? fallback.demos[0]?.coverImage,
+        coverImage: imageUrlOrFallback(demo.cover_image_url, fallback.demos[0]?.coverImage ?? siteConfig.heroVideo),
         demoUrl: demo.demo_url,
         featured: demo.is_featured,
       })),

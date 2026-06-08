@@ -21,6 +21,7 @@ export type GalleryItem = {
   type: "image" | "video";
   src: string;
   category: string;
+  poster?: string;
 };
 
 export type Testimonial = {

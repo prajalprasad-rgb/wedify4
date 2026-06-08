@@ -44,6 +44,7 @@ const reveal = {
 export function LandingPage({ content }: { content?: PublicContent }) {
   const [faqQuery, setFaqQuery] = useState("");
   const [activeGallery, setActiveGallery] = useState<string | null>(null);
+  const [heroPreviewOpen, setHeroPreviewOpen] = useState(false);
   const liveSettings = content?.settings;
   const liveDemos = content?.demos.length ? content.demos : fallbackDemos;
   const liveGallery = content?.gallery.length ? content.gallery : fallbackGallery;
@@ -55,6 +56,8 @@ export function LandingPage({ content }: { content?: PublicContent }) {
   const brandDescription = liveSettings?.description ?? siteConfig.description;
   const heroVideo = liveSettings?.hero_video_url ?? siteConfig.heroVideo;
   const heroImage = liveSettings?.seo?.hero_image_url;
+  const heroPoster = heroImage ?? "https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=1800&auto=format&fit=crop";
+  const fallbackImage = "https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=1600&auto=format&fit=crop";
   const heroMediaType = liveSettings?.seo?.hero_media_type ?? "video";
   const musicUrl = liveSettings?.background_music_url ?? siteConfig.backgroundMusic;
 
@@ -90,17 +93,31 @@ export function LandingPage({ content }: { content?: PublicContent }) {
               className="absolute inset-0 h-full w-full object-cover opacity-40"
               src={heroImage}
               alt="Wedify luxury event hero"
+              onError={(event) => {
+                event.currentTarget.src = fallbackImage;
+              }}
             />
           ) : (
-            <video
-              className="absolute inset-0 h-full w-full object-cover opacity-40"
-              src={heroVideo}
-              autoPlay
-              muted
-              loop
-              playsInline
-              poster={heroImage ?? "https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=1800&auto=format&fit=crop"}
-            />
+            <>
+              <img
+                className="absolute inset-0 h-full w-full object-cover opacity-30"
+                src={heroPoster}
+                alt="Wedify luxury event hero"
+                onError={(event) => {
+                  event.currentTarget.src = fallbackImage;
+                }}
+              />
+              <video
+                className="absolute inset-0 h-full w-full object-cover opacity-40"
+                src={heroVideo}
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="metadata"
+                poster={heroPoster}
+              />
+            </>
           )}
           <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,5,5,0.96),rgba(5,5,5,0.62),rgba(5,5,5,0.88))]" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_60%_28%,rgba(212,175,55,0.18),transparent_34%)]" />
@@ -125,6 +142,16 @@ export function LandingPage({ content }: { content?: PublicContent }) {
                   <MessageCircle size={17} />
                   WhatsApp Us
                 </a>
+                {heroMediaType !== "image" && heroVideo && (
+                  <button
+                    type="button"
+                    onClick={() => setHeroPreviewOpen(true)}
+                    className="inline-flex h-13 items-center justify-center gap-2 rounded-full border border-[#D4AF37]/35 bg-black/25 px-7 text-sm font-semibold text-[#E8C76A] backdrop-blur transition hover:border-[#D4AF37]/70"
+                  >
+                    <Video size={17} />
+                    Play Video
+                  </button>
+                )}
               </div>
             </motion.div>
           </div>
@@ -169,7 +196,14 @@ export function LandingPage({ content }: { content?: PublicContent }) {
                 className={cn("group overflow-hidden rounded-lg border border-white/10 bg-[#111111] transition hover:-translate-y-1 hover:border-[#D4AF37]/50", index === 0 && "lg:col-span-2")}
               >
                 <div className="relative aspect-[16/10] overflow-hidden">
-                  <img src={demo.coverImage} alt={demo.title} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+                  <img
+                    src={demo.coverImage}
+                    alt={demo.title}
+                    className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
+                    onError={(event) => {
+                      event.currentTarget.src = fallbackImage;
+                    }}
+                  />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/86 via-black/12 to-transparent" />
                   {demo.featured && <span className="absolute left-4 top-4 rounded-full bg-[#D4AF37] px-3 py-1 text-xs font-semibold text-black">Featured</span>}
                 </div>
@@ -189,31 +223,40 @@ export function LandingPage({ content }: { content?: PublicContent }) {
         <Section id="gallery" eyebrow="Gallery" title="Screenshots, mockups, previews, projects, and videos">
           <div className="columns-1 gap-4 sm:columns-2 lg:columns-3">
             {liveGallery.map((item, index) => (
-              <motion.button
+              <motion.article
                 key={item.id}
                 {...reveal}
-                type="button"
-                onClick={() => setActiveGallery(item.id)}
                 className="group mb-4 w-full break-inside-avoid overflow-hidden rounded-lg border border-white/10 bg-[#111111] text-left"
               >
                 {item.type === "video" ? (
                   <video
                     src={item.src}
-                    autoPlay
+                    controls
                     muted
-                    loop
                     playsInline
                     preload="metadata"
+                    poster={item.poster}
                     className={cn("w-full object-cover transition duration-700 group-hover:scale-105", index % 3 === 0 ? "aspect-[4/5]" : "aspect-[4/3]")}
                   />
                 ) : (
-                  <img loading="lazy" src={item.src} alt={item.title} className={cn("w-full object-cover transition duration-700 group-hover:scale-105", index % 3 === 0 ? "aspect-[4/5]" : "aspect-[4/3]")} />
+                  <img
+                    loading="lazy"
+                    src={item.src}
+                    alt={item.title}
+                    className={cn("w-full object-cover transition duration-700 group-hover:scale-105", index % 3 === 0 ? "aspect-[4/5]" : "aspect-[4/3]")}
+                    onError={(event) => {
+                      event.currentTarget.src = fallbackImage;
+                    }}
+                  />
                 )}
                 <div className="p-4">
                   <p className="text-xs uppercase tracking-[0.18em] text-[#D4AF37]">{item.category}</p>
                   <p className="mt-2 text-sm text-white">{item.title}</p>
+                  <button type="button" onClick={() => setActiveGallery(item.id)} className="mt-4 rounded-full border border-[#D4AF37]/35 px-4 py-2 text-xs font-semibold text-[#E8C76A]">
+                    View
+                  </button>
                 </div>
-              </motion.button>
+              </motion.article>
             ))}
           </div>
         </Section>
@@ -221,32 +264,43 @@ export function LandingPage({ content }: { content?: PublicContent }) {
         <Section eyebrow="Wedding Reel Showcase" title="Short-form reels for cinematic event storytelling">
           <div className="flex gap-4 overflow-x-auto pb-4">
             {liveReels.map((item) => (
-              <motion.button
+              <motion.article
                 key={`reel-${item.id}`}
                 {...reveal}
-                type="button"
-                onClick={() => setActiveGallery(item.id)}
                 className="group relative h-[520px] min-w-[280px] overflow-hidden rounded-lg border border-white/10 bg-[#111111] text-left"
               >
                 {item.type === "video" ? (
                   <video
                     src={item.src}
-                    autoPlay
+                    controls
                     muted
-                    loop
                     playsInline
                     preload="metadata"
+                    poster={item.poster}
                     className="h-full w-full object-cover opacity-75 transition duration-700 group-hover:scale-105 group-hover:opacity-95"
                   />
                 ) : (
-                  <img loading="lazy" src={item.src} alt={item.title} className="h-full w-full object-cover opacity-75 transition duration-700 group-hover:scale-105 group-hover:opacity-95" />
+                  <img
+                    loading="lazy"
+                    src={item.src}
+                    alt={item.title}
+                    className="h-full w-full object-cover opacity-75 transition duration-700 group-hover:scale-105 group-hover:opacity-95"
+                    onError={(event) => {
+                      event.currentTarget.src = fallbackImage;
+                    }}
+                  />
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/20" />
                 <div className="absolute bottom-4 left-4 right-4">
-                  <Video className="mb-3 text-[#E8C76A]" />
+                  <div className="mb-3 grid size-10 place-items-center rounded-full border border-[#D4AF37]/45 bg-black/40 text-[#E8C76A] backdrop-blur">
+                    <Video size={18} />
+                  </div>
                   <p className="text-sm font-medium text-white">{item.title}</p>
+                  <button type="button" onClick={() => setActiveGallery(item.id)} className="mt-4 rounded-full border border-[#D4AF37]/45 bg-black/35 px-4 py-2 text-xs font-semibold text-[#E8C76A] backdrop-blur">
+                    Open Reel
+                  </button>
                 </div>
-              </motion.button>
+              </motion.article>
             ))}
           </div>
         </Section>
@@ -304,7 +358,14 @@ export function LandingPage({ content }: { content?: PublicContent }) {
           <div className="grid gap-5 md:grid-cols-2">
             {liveBlogs.map((post) => (
               <motion.a key={post.slug} {...reveal} href={`/blog/${post.slug}`} className="group overflow-hidden rounded-lg border border-white/10 bg-[#111111] transition hover:border-[#D4AF37]/50">
-                <img src={post.image} alt={post.title} className="aspect-[16/9] w-full object-cover transition duration-700 group-hover:scale-105" />
+                <img
+                  src={post.image}
+                  alt={post.title}
+                  className="aspect-[16/9] w-full object-cover transition duration-700 group-hover:scale-105"
+                  onError={(event) => {
+                    event.currentTarget.src = fallbackImage;
+                  }}
+                />
                 <div className="p-5">
                   <p className="text-xs uppercase tracking-[0.18em] text-[#D4AF37]">{post.category} / {formatDate(post.date)}</p>
                   <h3 className="mt-3 text-xl font-semibold text-white">{post.title}</h3>
@@ -386,11 +447,36 @@ export function LandingPage({ content }: { content?: PublicContent }) {
               autoPlay
               playsInline
               preload="metadata"
+              poster={activeGalleryItem.poster}
               className="max-h-[82vh] w-full max-w-5xl rounded-lg object-contain"
             />
           ) : (
-            <img src={activeGalleryItem.src} alt={activeGalleryItem.title} className="max-h-[82vh] w-full max-w-5xl rounded-lg object-contain" />
+            <img
+              src={activeGalleryItem.src}
+              alt={activeGalleryItem.title}
+              className="max-h-[82vh] w-full max-w-5xl rounded-lg object-contain"
+              onError={(event) => {
+                event.currentTarget.src = fallbackImage;
+              }}
+            />
           )}
+        </div>
+      )}
+
+      {heroPreviewOpen && (
+        <div className="fixed inset-0 z-[80] grid place-items-center bg-black/90 p-4 backdrop-blur-xl" role="dialog" aria-modal="true">
+          <button type="button" onClick={() => setHeroPreviewOpen(false)} className="absolute right-5 top-5 rounded-full border border-white/15 px-4 py-2 text-sm text-white hover:text-[#E8C76A]">
+            Close
+          </button>
+          <video
+            src={heroVideo}
+            controls
+            autoPlay
+            playsInline
+            preload="metadata"
+            poster={heroPoster}
+            className="max-h-[82vh] w-full max-w-5xl rounded-lg object-contain"
+          />
         </div>
       )}
     </>
