@@ -29,19 +29,22 @@ export type PublicContent = {
   socialLinks: Array<{ id: string; platform: string; url: string }>;
 };
 
-type MediaJoin = { public_url: string | null } | Array<{ public_url: string | null }> | null;
 type GalleryRow = {
   id: string;
   title: string;
   category: string | null;
   item_type: "image" | "video";
-  media_assets: MediaJoin;
+  media_asset_id: string | null;
 };
 type ReelRow = {
   id: string;
   title: string;
   caption: string | null;
-  media_assets: MediaJoin;
+  media_asset_id: string | null;
+};
+type MediaAssetRow = {
+  id: string;
+  public_url: string | null;
 };
 type BlogRow = {
   slug: string;
@@ -54,11 +57,6 @@ type BlogRow = {
   published_at: string | null;
   created_at: string;
 };
-
-function mediaUrl(media: MediaJoin) {
-  if (Array.isArray(media)) return media[0]?.public_url ?? null;
-  return media?.public_url ?? null;
-}
 
 function proxiedMediaUrl(url: string | null | undefined) {
   if (!url) return url ?? null;
@@ -107,32 +105,47 @@ export async function getPublicContent(): Promise<PublicContent> {
 
   try {
     const supabase = await createClient();
-    const [settingsResponse, demosResponse, galleryResponse, reelsResponse, testimonialsResponse, faqsResponse, blogsResponse, socialsResponse] =
+    const [
+      settingsResponse,
+      demosResponse,
+      galleryResponse,
+      reelsResponse,
+      mediaAssetsResponse,
+      testimonialsResponse,
+      faqsResponse,
+      blogsResponse,
+      socialsResponse,
+    ] =
       await Promise.all([
         supabase.from("site_settings").select("*").eq("id", "default").maybeSingle(),
         supabase.from("demos").select("*").order("sort_order").order("created_at", { ascending: false }),
         supabase
           .from("gallery_items")
-          .select("id,title,category,item_type,media_assets(public_url)")
+          .select("id,title,category,item_type,media_asset_id")
           .order("sort_order")
           .order("created_at", { ascending: false }),
         supabase
           .from("video_reels")
-          .select("id,title,caption,media_assets(public_url)")
+          .select("id,title,caption,media_asset_id")
           .eq("is_active", true)
           .order("sort_order")
           .order("created_at", { ascending: false }),
+        supabase.from("media_assets").select("id,public_url"),
         supabase.from("testimonials").select("*").order("sort_order").order("created_at", { ascending: false }),
         supabase.from("faqs").select("*").eq("is_published", true).order("sort_order").order("created_at", { ascending: false }),
         supabase.from("blogs").select("*").eq("status", "published").order("published_at", { ascending: false }),
         supabase.from("social_links").select("id,platform,url").eq("is_active", true).order("sort_order").order("platform"),
       ]);
 
+    const mediaMap = new Map(
+      ((mediaAssetsResponse.data ?? []) as MediaAssetRow[]).map((asset) => [asset.id, asset.public_url]),
+    );
+
     const liveGallery = ((galleryResponse.data ?? []) as unknown as GalleryRow[]).map((item) => ({
       id: item.id,
       title: item.title,
       type: item.item_type,
-      src: proxiedMediaUrl(mediaUrl(item.media_assets)) ?? fallback.gallery[0]?.src ?? siteConfig.heroVideo,
+      src: proxiedMediaUrl(mediaMap.get(item.media_asset_id ?? "")) ?? fallback.gallery[0]?.src ?? siteConfig.heroVideo,
       category: item.category ?? "Gallery",
     }));
     const firstGalleryImage =
@@ -143,7 +156,7 @@ export async function getPublicContent(): Promise<PublicContent> {
       id: item.id,
       title: item.title,
       type: "video" as const,
-      src: proxiedMediaUrl(mediaUrl(item.media_assets)) ?? fallback.reels[0]?.src ?? siteConfig.heroVideo,
+      src: proxiedMediaUrl(mediaMap.get(item.media_asset_id ?? "")) ?? fallback.reels[0]?.src ?? siteConfig.heroVideo,
       category: item.caption ?? "Wedding Reel",
       poster: firstGalleryImage,
     }));

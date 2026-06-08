@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BrandMark } from "@/components/brand-mark";
 import { ContactForm } from "@/components/marketing/contact-form";
 import { LuxuryLoader } from "@/components/marketing/luxury-loader";
@@ -44,7 +44,6 @@ const reveal = {
 export function LandingPage({ content }: { content?: PublicContent }) {
   const [faqQuery, setFaqQuery] = useState("");
   const [activeGallery, setActiveGallery] = useState<string | null>(null);
-  const [heroPreviewOpen, setHeroPreviewOpen] = useState(false);
   const liveSettings = content?.settings;
   const liveDemos = content?.demos.length ? content.demos : fallbackDemos;
   const liveGallery = content?.gallery.length ? content.gallery : fallbackGallery;
@@ -70,6 +69,23 @@ export function LandingPage({ content }: { content?: PublicContent }) {
   );
 
   const activeGalleryItem = [...liveGallery, ...liveReels].find((item) => item.id === activeGallery);
+
+  useEffect(() => {
+    const playInlineVideos = () => {
+      document.querySelectorAll<HTMLVideoElement>("video[data-wedify-autoplay]").forEach((video) => {
+        video.play().catch(() => undefined);
+      });
+    };
+
+    playInlineVideos();
+    window.addEventListener("touchstart", playInlineVideos, { once: true, passive: true });
+    window.addEventListener("scroll", playInlineVideos, { once: true, passive: true });
+
+    return () => {
+      window.removeEventListener("touchstart", playInlineVideos);
+      window.removeEventListener("scroll", playInlineVideos);
+    };
+  }, [heroVideo, liveGallery, liveReels]);
 
   return (
     <>
@@ -108,6 +124,7 @@ export function LandingPage({ content }: { content?: PublicContent }) {
                 }}
               />
               <video
+                data-wedify-autoplay
                 className="absolute inset-0 h-full w-full object-cover opacity-40"
                 src={heroVideo}
                 autoPlay
@@ -142,16 +159,6 @@ export function LandingPage({ content }: { content?: PublicContent }) {
                   <MessageCircle size={17} />
                   WhatsApp Us
                 </a>
-                {heroMediaType !== "image" && heroVideo && (
-                  <button
-                    type="button"
-                    onClick={() => setHeroPreviewOpen(true)}
-                    className="inline-flex h-13 items-center justify-center gap-2 rounded-full border border-[#D4AF37]/35 bg-black/25 px-7 text-sm font-semibold text-[#E8C76A] backdrop-blur transition hover:border-[#D4AF37]/70"
-                  >
-                    <Video size={17} />
-                    Play Video
-                  </button>
-                )}
               </div>
             </motion.div>
           </div>
@@ -230,9 +237,12 @@ export function LandingPage({ content }: { content?: PublicContent }) {
               >
                 {item.type === "video" ? (
                   <video
+                    data-wedify-autoplay
                     src={item.src}
                     controls
+                    autoPlay
                     muted
+                    loop
                     playsInline
                     preload="metadata"
                     poster={item.poster}
@@ -252,9 +262,6 @@ export function LandingPage({ content }: { content?: PublicContent }) {
                 <div className="p-4">
                   <p className="text-xs uppercase tracking-[0.18em] text-[#D4AF37]">{item.category}</p>
                   <p className="mt-2 text-sm text-white">{item.title}</p>
-                  <button type="button" onClick={() => setActiveGallery(item.id)} className="mt-4 rounded-full border border-[#D4AF37]/35 px-4 py-2 text-xs font-semibold text-[#E8C76A]">
-                    View
-                  </button>
                 </div>
               </motion.article>
             ))}
@@ -271,9 +278,11 @@ export function LandingPage({ content }: { content?: PublicContent }) {
               >
                 {item.type === "video" ? (
                   <video
+                    data-wedify-autoplay
                     src={item.src}
-                    controls
+                    autoPlay
                     muted
+                    loop
                     playsInline
                     preload="metadata"
                     poster={item.poster}
@@ -296,9 +305,6 @@ export function LandingPage({ content }: { content?: PublicContent }) {
                     <Video size={18} />
                   </div>
                   <p className="text-sm font-medium text-white">{item.title}</p>
-                  <button type="button" onClick={() => setActiveGallery(item.id)} className="mt-4 rounded-full border border-[#D4AF37]/45 bg-black/35 px-4 py-2 text-xs font-semibold text-[#E8C76A] backdrop-blur">
-                    Open Reel
-                  </button>
                 </div>
               </motion.article>
             ))}
@@ -463,22 +469,6 @@ export function LandingPage({ content }: { content?: PublicContent }) {
         </div>
       )}
 
-      {heroPreviewOpen && (
-        <div className="fixed inset-0 z-[80] grid place-items-center bg-black/90 p-4 backdrop-blur-xl" role="dialog" aria-modal="true">
-          <button type="button" onClick={() => setHeroPreviewOpen(false)} className="absolute right-5 top-5 rounded-full border border-white/15 px-4 py-2 text-sm text-white hover:text-[#E8C76A]">
-            Close
-          </button>
-          <video
-            src={heroVideo}
-            controls
-            autoPlay
-            playsInline
-            preload="metadata"
-            poster={heroPoster}
-            className="max-h-[82vh] w-full max-w-5xl rounded-lg object-contain"
-          />
-        </div>
-      )}
     </>
   );
 }
